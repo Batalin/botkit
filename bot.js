@@ -1,69 +1,44 @@
+
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-          ______     ______     ______   __  __     __     ______
-          /\  == \   /\  __ \   /\__  _\ /\ \/ /    /\ \   /\__  _\
-          \ \  __<   \ \ \/\ \  \/_/\ \/ \ \  _"-.  \ \ \  \/_/\ \/
-          \ \_____\  \ \_____\    \ \_\  \ \_\ \_\  \ \_\    \ \_\
-           \/_____/   \/_____/     \/_/   \/_/\/_/   \/_/     \/_/
+ ______     ______     ______   __  __     __     ______
+ /\  == \   /\  __ \   /\__  _\ /\ \/ /    /\ \   /\__  _\
+ \ \  __<   \ \ \/\ \  \/_/\ \/ \ \  _"-.  \ \ \  \/_/\ \/
+ \ \_____\  \ \_____\    \ \_\  \ \_\ \_\  \ \_\    \ \_\
+ \/_____/   \/_____/     \/_/   \/_/\/_/   \/_/     \/_/
+ This is a sample Slack bot built with Botkit.
+ This bot demonstrates many of the core features of Botkit:
+ * Connect to Slack using the real time API
+ * Receive messages based on "spoken" patterns
+ * Reply to messages
+ * Use the conversation system to ask questions
+ * Use the built in storage system to store and retrieve information
+ for a user.
+ # RUN THE BOT:
+ Get a Bot token from Slack:
+ -> http://my.slack.com/services/new/bot
+ Run your bot from the command line:
+ set token=<MY TOKEN>
 
+ node bot.js
+ # USE THE BOT:
+ Find your bot inside Slack to send it a direct message.
+ Say: "Hello"
+ The bot will reply "Hello!"
+ Say: "who are you?"
+ The bot will tell you its name, where it running, and for how long.
+ Say: "Call me <nickname>"
+ Tell the bot your nickname. Now you are friends.
+ Say: "who am I?"
+ The bot will tell you your nickname, if it knows one for you.
+ Say: "shutdown"
+ The bot will ask if you are sure, and then shut itself down.
+ Make sure to invite your bot into other channels using /invite @<my bot>!
+ # EXTEND THE BOT:
+ Botkit is has many features for building cool and useful bots!
+ Read all about it here:
+ -> http://howdy.ai/botkit
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
-This is a sample Slack bot built with Botkit.
-
-This bot demonstrates many of the core features of Botkit:
-
-* Connect to Slack using the real time API
-* Receive messages based on "spoken" patterns
-* Reply to messages
-* Use the conversation system to ask questions
-* Use the built in storage system to store and retrieve information
-  for a user.
-
-# RUN THE BOT:
-
-  Get a Bot token from Slack:
-
-    -> http://my.slack.com/services/new/bot
-
-  Run your bot from the command line:
-
-    set token=<MY TOKEN>
-	
-	node bot.js
-
-# USE THE BOT:
-
-  Find your bot inside Slack to send it a direct message.
-
-  Say: "Hello"
-
-  The bot will reply "Hello!"
-
-  Say: "who are you?"
-
-  The bot will tell you its name, where it running, and for how long.
-
-  Say: "Call me <nickname>"
-
-  Tell the bot your nickname. Now you are friends.
-
-  Say: "who am I?"
-
-  The bot will tell you your nickname, if it knows one for you.
-
-  Say: "shutdown"
-
-  The bot will ask if you are sure, and then shut itself down.
-
-  Make sure to invite your bot into other channels using /invite @<my bot>!
-
-# EXTEND THE BOT:
-
-  Botkit is has many features for building cool and useful bots!
-
-  Read all about it here:
-
-    -> http://howdy.ai/botkit
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
 
 if (!process.env.token) {
@@ -71,9 +46,10 @@ if (!process.env.token) {
     process.exit(1);
 }
 
+
 var Botkit = require('./lib/Botkit.js');
 var os = require('os');
-var botmath = require('./botmath.js');
+var weather = require('./weather/lib/weather.js');
 
 var controller = Botkit.slackbot({
     debug: true,
@@ -189,14 +165,14 @@ controller.hears(['shutdown'],'direct_message,direct_mention,mention',function(b
                     },3000);
                 }
             },
-        {
-            pattern: bot.utterances.no,
-            default: true,
-            callback: function(response, convo) {
-                convo.say('*Phew!*');
-                convo.next();
+            {
+                pattern: bot.utterances.no,
+                default: true,
+                callback: function(response, convo) {
+                    convo.say('*Phew!*');
+                    convo.next();
+                }
             }
-        }
         ]);
     });
 });
@@ -211,8 +187,19 @@ controller.hears(['uptime','identify yourself','who are you','what is your name'
 
 });
 
-controller.hears(['how old are you'],'direct_message,direct_mention,mention',function(bot, message) {
 
+controller.hears(['How is the weather in (.*)'], 'direct_message,direct_mention,mention',function(bot, message) {
+    var words = message.text.split(" ");
+    var city = words[words.length - 1];
+    weather.find({search: city, degreeType: 'F'}, function (err, result) {
+        if (err) console.log(err);
+        //console.log(JSON.stringify(result, null, 2));
+        bot.reply(message, JSON.stringify(result, null, 2));
+    });
+});
+
+controller.hears(['how old are you'],'direct_message,direct_mention,mention',function(bot, message) {
+    var uptime = formatUptime(process.uptime());
     bot.reply(message,':robot_face: I am a bot named <@' + bot.identity.name + '>. I am ' + uptime + ' old');
 
 });
@@ -270,16 +257,6 @@ function lastTenPrimes(n) {
     }while(primes.length <10)
     return primes;
 }
-
-controller.hears('what is (.*) \\+ (.*)',['direct_message', 'direct_mention', 'mention'],function(bot,message) {
-
-	var num1 = message.match[1];
-	var num2 = message.match[2];
-		
-	if (num1 != null && num2 != null) {
-		return bot.reply(message, num1 + ' + ' + num2 + ' = ' + botmath.sum(num1, num2));
-	}
-});
 
 module.exports.isPrime = isPrime;
 module.exports.lastTenPrimes = lastTenPrimes;
