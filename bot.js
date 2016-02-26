@@ -46,6 +46,7 @@ if (!process.env.token) {
     process.exit(1);
 }
 
+var request = require('request');
 
 var Botkit = require('./lib/Botkit.js');
 var os = require('os');
@@ -127,6 +128,14 @@ controller.hears(['prime.'], 'direct_message,direct_mention,mention', function(b
     }
 });
 
+controller.hears(['game (.*)'], 'direct_message,direct_mention,mention', function(bot, message) {
+    var matches = message.text.match(/game (.*)/i);
+    var game = matches[1];
+    var obj = {};
+    getGameInfo(game, message);
+
+});
+
 
 
 controller.hears(['what is my name','who am i'],'direct_message,direct_mention,mention',function(bot, message) {
@@ -189,12 +198,15 @@ controller.hears(['uptime','identify yourself','who are you','what is your name'
 
 
 controller.hears(['How is the weather in (.*)'], 'direct_message,direct_mention,mention',function(bot, message) {
+
     var words = message.text.split(" ");
     var city = words[words.length - 1];
     weather.find({search: city, degreeType: 'F'}, function (err, result) {
         if (err) console.log(err);
+        console.log(typeof (result));
+        console.log(result[0]["current"]);
         //console.log(JSON.stringify(result, null, 2));
-        bot.reply(message, JSON.stringify(result, null, 2));
+        bot.reply(message, JSON.stringify(result[0]["current"], null, 2));
     });
 });
 
@@ -256,6 +268,28 @@ function lastTenPrimes(n) {
         if(n < 1) break;
     }while(primes.length <10)
     return primes;
+}
+
+function getGameInfo(game, message){
+    console.log(game);
+    var obj = {};
+    request('http://www.speedrun.com/api_records.php?series='+game, function (error, response, body) {
+        if (!error && response.statusCode == 200) {
+            obj = JSON.parse(body);
+            var keys = Object.keys(obj);
+            //console.log("body of the response - " + body); // Show the HTML for the Modulus homepage.
+            //console.log("type of body cont - " + typeof (body));
+            //console.log("obj keys - " + Object.keys(obj));
+            //console.log(JSON.stringify(obj["Terminator 2: Judgment Day (GB)"]));
+            //console.log("typeof stringify - " + typeof (JSON.parse(body)));
+            for(var i = 0; i < keys.length; i++) {
+                bot.reply(message, "game info - " + JSON.stringify(obj[keys[i]]));
+            }
+            //bot.reply(message, "game info - " + JSON.stringify(obj));
+            //return obj["Terminator 2: Judgment Day (GB)"];
+        }
+    });
+
 }
 
 module.exports.isPrime = isPrime;
